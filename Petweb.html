@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PetHabit AI | Premium Nutrition Tracking</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --bg-dark: #080c14;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-gold: #cfa861;
+            --accent-teal: #00d2d3;
+            --text-main: #f0f2f5;
+            --text-dim: #94a3b8;
+            --bezier: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        /* --- Background Animation --- */
+        .orb {
+            position: fixed;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(207, 168, 97, 0.08) 0%, transparent 70%);
+            top: -200px; right: -100px; z-index: -1;
+            animation: float 20s infinite alternate var(--bezier);
+        }
+        @keyframes float { from { transform: translate(0, 0); } to { transform: translate(-100px, 100px); } }
+
+        /* --- Navigation --- */
+        nav {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1.5rem 10%; background: rgba(8, 12, 20, 0.8);
+            backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .logo { font-size: 1.25rem; font-weight: 800; color: var(--accent-gold); }
+
+        /* --- Hero Section --- */
+        .hero { padding: 100px 10% 80px; text-align: center; max-width: 1200px; margin: 0 auto; }
+        .badge {
+            display: inline-block; padding: 6px 16px; background: var(--glass);
+            border: 1px solid var(--glass-border); border-radius: 100px;
+            font-size: 0.8rem; color: var(--accent-teal); margin-bottom: 1.5rem;
+        }
+        h1 {
+            font-size: 4rem; line-height: 1.1; margin-bottom: 1.5rem;
+            background: linear-gradient(180deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        /* --- UI Cards --- */
+        .dashboard-preview { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; margin-top: 4rem; }
+        .card {
+            background: var(--glass); border: 1px solid var(--glass-border);
+            padding: 2.5rem; border-radius: 24px; backdrop-filter: blur(5px);
+            transition: transform 0.4s var(--bezier);
+        }
+        .card:hover { transform: translateY(-10px); border-color: var(--accent-gold); }
+
+        .cta-button {
+            padding: 16px 32px; background: var(--accent-gold); color: #000;
+            text-decoration: none; border-radius: 12px; font-weight: 700;
+            display: inline-block; transition: 0.3s; cursor: pointer; border: none;
+        }
+        .cta-button:hover { box-shadow: 0 0 25px rgba(207, 168, 97, 0.4); transform: scale(1.05); }
+
+        /* --- MODAL STYLES (The Popup) --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px);
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; z-index: 1000;
+            transition: all 0.5s var(--bezier);
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+
+        .modal-content {
+            background: #111827; border: 1px solid var(--glass-border);
+            padding: 3rem; border-radius: 28px; width: 90%; max-width: 500px;
+            transform: scale(0.8); transition: all 0.5s var(--bezier);
+            position: relative;
+        }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+
+        .close-modal {
+            position: absolute; top: 20px; right: 20px;
+            color: var(--text-dim); font-size: 1.5rem; cursor: pointer;
+        }
+
+        form input, form select {
+            width: 100%; padding: 12px; margin: 10px 0 20px;
+            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+            border-radius: 8px; color: #fff; font-size: 1rem;
+        }
+        form label { font-size: 0.9rem; color: var(--accent-gold); }
+    </style>
+</head>
+<body>
+
+    <div class="orb"></div>
+
+    <nav>
+        <div class="logo">PETHABIT AI</div>
+        <button class="cta-button open-waitlist" style="padding: 10px 20px; font-size: 0.9rem;">Join Waitlist</button>
+    </nav>
+
+    <section class="hero">
+        <span class="badge">Early Access Phase 1</span>
+        <h1>Nutrition Intelligence for Your Best Friend.</h1>
+        <p style="color: var(--text-dim); margin-bottom: 2rem;">Stop guessing. Start tracking. The most advanced nutrition platform for Dogs and Cats.</p>
+        
+        <button class="cta-button open-waitlist">Get Early Access</button>
+
+        <div class="dashboard-preview">
+            <div class="card">
+                <h3>Live Nutrition Analytics</h3>
+                <canvas id="nutritionChart" style="height:200px; width:100%; margin-top:20px;"></canvas>
+            </div>
+            <div class="card">
+                <h3>Pet Habit Insights</h3>
+                <p style="font-size: 0.9rem; color: var(--text-dim); margin-top: 10px;">Tracking frequency, hydration, and meal consistency across all breeds.</p>
+                <div style="margin-top:20px; height:8px; background:rgba(255,255,255,0.1); border-radius:10px; overflow:hidden;">
+                    <div style="width:75%; height:100%; background:var(--accent-teal);"></div>
+                </div>
+                <p style="margin-top:10px; color:var(--accent-teal);">Optimal Health: 75%</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <span class="close-modal" id="closeModal">&times;</span>
+            <h2 style="margin-bottom: 10px;">Join the Waitlist</h2>
+            <p style="color: var(--text-dim); margin-bottom: 25px; font-size: 0.9rem;">Enter your details to get early access and exclusive pet health reports.</p>
+            
+            <form id="waitlistForm">
+                <label>Owner Name</label>
+                <input type="text" placeholder="John Doe" required>
+                
+                <label>Email Address</label>
+                <input type="email" placeholder="john@example.com" required>
+                
+                <label>Pet Type</label>
+                <select>
+                    <option>Dog</option>
+                    <option>Cat</option>
+                    <option>Other</option>
+                </select>
+                
+                <button type="submit" class="cta-button" style="width: 100%;">Submit Application</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Modal Logic
+        const overlay = document.getElementById('modalOverlay');
+        const openBtns = document.querySelectorAll('.open-waitlist');
+        const closeBtn = document.getElementById('closeModal');
+        const form = document.getElementById('waitlistForm');
+
+        openBtns.forEach(btn => {
+            btn.onclick = () => overlay.classList.add('active');
+        });
+
+        closeBtn.onclick = () => overlay.classList.remove('active');
+        
+        // Close if clicking outside the box
+        window.onclick = (event) => {
+            if (event.target == overlay) overlay.classList.remove('active');
+        };
+
+        // Form Submission
+        form.onsubmit = (e) => {
+            e.preventDefault();
+            alert("Success! You have been added to the elite waitlist.");
+            overlay.classList.remove('active');
+        };
+
+        // Chart.js Initialization
+        const ctx = document.getElementById('nutritionChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    data: [65, 78, 62, 95, 80, 70, 85],
+                    borderColor: '#cfa861',
+                    backgroundColor: 'rgba(207, 168, 97, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { display: false },
+                    x: { ticks: { color: '#8899a6' }, grid: { display: false } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

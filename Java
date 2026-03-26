@@ -1,0 +1,116 @@
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('Index')
+      .setTitle('GL Finance Portal')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function getSettingsData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const s = ss.getSheetByName("Settings");
+  const data = s.getDataRange().getValues().slice(1);
+  
+  return {
+    fy: data.map(r => r[0]).filter(String),
+    entity: data.map(r => r[1]).filter(String),
+    expenseHead: data.map(r => r[2]).filter(String),
+    currency: data.map(r => r[3]).filter(String),
+    occurrence: data.map(r => r[4]).filter(String),
+    accrualGL: data.map(r => r[5]).filter(String)[0] || "Accrual Control A/c",
+    statusList: data.map(r => r[6]).filter(String)
+  };
+}
+
+function getDatabaseRecords() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Accruals");
+  return sheet.getDataRange().getDisplayValues(); 
+}
+
+function submitToSheet(formData) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Accruals");
+  const lastRow = sheet.getLastRow();
+  const serial = lastRow === 1 ? 1 : Number(sheet.getRange(lastRow, 1).getValue()) + 1;
+  
+  sheet.appendRow([
+    serial, formData.fy, formData.entity, formData.postingPeriod, formData.reversalPeriod,
+    formData.amount, formData.currency, formData.expenseHead, formData.vendor, 
+    formData.occurrence, "Pending", formData.comments || "No comments", "TBD", 
+    formData.narration, formData.debitAc, formData.creditAc, 
+    Session.getActiveUser().getEmail(), "", new Date()
+  ]);
+  return { success: true, serial: serial };
+}
+
+
+// MAKER: EDIT/DELETE WITH JUSTIFICATION & DATA OVERWRITE
+function updateEntry(serial, updatedData, actionType) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Accruals");
+  const data = sheet.getDataRange().getValues();
+  const rowIndex = data.findIndex(r => r[0] == serial) + 1;
+
+  if (actionType === 'DELETE') {
+    sheet.getRange(rowIndex, 11).setValue("DELETED");
+    sheet.getRange(rowIndex, 12).setValue(`Action: DELETE | Reason: ${updatedData.reason}`);
+  } else if (actionType === 'EDIT') {
+    // Overwrite the specific columns with the new edited data
+    sheet.getRange(rowIndex, 2).setValue(updatedData.fy);               // FY
+    sheet.getRange(rowIndex, 3).setValue(updatedData.entity);           // Entity
+    sheet.getRange(rowIndex, 4).setValue(updatedData.postingPeriod);    // Posting Period
+    sheet.getRange(rowIndex, 6).setValue(updatedData.amount);           // Amount
+    sheet.getRange(rowIndex, 8).setValue(updatedData.expenseHead);      // Expense Head
+    sheet.getRange(rowIndex, 9).setValue(updatedData.vendor);           // Vendor
+    sheet.getRange(rowIndex, 14).setValue(updatedData.narration);       // Narration
+    sheet.getRange(rowIndex, 15).setValue(updatedData.debitAc);         // Debit
+    sheet.getRange(rowIndex, 16).setValue(updatedData.creditAc);        // Credit
+    
+    // Update status for Checker review
+    sheet.getRange(rowIndex, 11).setValue("Pending Mod");
+    sheet.getRange(rowIndex, 12).setValue(`Action: EDIT | Reason: ${updatedData.reason}`);
+  }
+  return true;
+}
+
+
+function processReversal(originalSerial, actualInvoiceAmt, invoiceNo, reason) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Accruals");
+  const data = sheet.getDataRange().getValues();
+  const originalRow = data.find(r => r[0] == originalSerial);
+  const originalIndex = data.findIndex(r => r[0] == originalSerial) + 1;
+
+  const originalAmt = parseFloat(originalRow[5]);
+  const variance = actualInvoiceAmt - originalAmt;
+  const newSerial = Number(sheet.getRange(sheet.getLastRow(), 1).getValue()) + 1;
+  
+  const reversalRow = [...originalRow];
+  reversalRow[0] = newSerial;
+  // This forces the reversal to save as a negative number in the Google Sheet
+  reversalRow[5] = -Math.abs(actualInvoiceAmt); 
+  reversalRow[10] = "Reversed";
+  reversalRow[11] = `Variance: ${variance.toFixed(2)} | Invoice: ${invoiceNo}`;
+  reversalRow[12] = "Reversal Justification: " + reason;
+  reversalRow[13] = `Reversal of: ${originalRow[13]} | Against Inv: ${invoiceNo}`;
+  reversalRow[14] = originalRow[15]; 
+  reversalRow[15] = originalRow[14]; 
+  reversalRow[16] = Session.getActiveUser().getEmail();
+  reversalRow[18] = new Date();
+
+  sheet.appendRow(reversalRow);
+  
+  sheet.getRange(originalIndex, 11).setValue("Fully Reversed");
+  sheet.getRange(originalIndex, 12).setValue(`Cleared by #${newSerial} | Inv: ${invoiceNo}`);
+
+  return { success: true, variance: variance };
+}
+
+function approveEntry(serial) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Accruals");
+  const data = sheet.getDataRange().getValues();
+  const rowIndex = data.findIndex(r => r[0] == serial) + 1;
+  
+  sheet.getRange(rowIndex, 11).setValue("Approved");
+  sheet.getRange(rowIndex, 18).setValue(Session.getActiveUser().getEmail());
+  return true;
+}

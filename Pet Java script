@@ -1,0 +1,108 @@
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+/**
+ * VETERAN DEV NOTE: 
+ * We use a "Module Pattern" to keep the global scope clean. 
+ * This ensures the app is scalable and professional.
+ */
+
+const PetApp = (() => {
+    // 1. Data State (Mocking a real database)
+    const petData = {
+        name: "Max",
+        type: "Dog",
+        dailyGoal: 1200, // calories
+        currentIntake: 850,
+        history: [1100, 1250, 900, 1150, 1200, 1000, 850]
+    };
+
+    // 2. Initialize Analytics Chart
+    const initChart = () => {
+        const ctx = document.getElementById('nutritionChart').getContext('2d');
+        
+        // Custom Gradient for "VC Look"
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(207, 168, 97, 0.4)');
+        gradient.addColorStop(1, 'rgba(207, 168, 97, 0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Caloric Intake',
+                    data: petData.history,
+                    borderColor: '#cfa861',
+                    backgroundColor: gradient,
+                    fill: true,
+                    tension: 0.4, // Smooth curves
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#00d2d3'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8899a6' } },
+                    x: { grid: { display: false }, ticks: { color: '#8899a6' } }
+                }
+            }
+        });
+    };
+
+    // 3. Action: Add Food Entry
+    const handleFoodLogging = () => {
+        const cta = document.querySelector('.cta-button');
+        cta.addEventListener('click', (e) => {
+            e.preventDefault();
+            const amount = prompt("Enter calories for this meal:");
+            if (amount && !isNaN(amount)) {
+                petData.currentIntake += parseInt(amount);
+                updateUI();
+                alert(`Logged ${amount} calories for ${petData.name}!`);
+            }
+        });
+    };
+
+    // 4. Action: Scroll Animations (Reveal on Scroll)
+    const initScrollReveal = () => {
+        const observerOptions = { threshold: 0.1 };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = "1";
+                    entry.target.style.transform = "translateY(0)";
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.card').forEach(card => {
+            card.style.opacity = "0";
+            card.style.transform = "translateY(50px)";
+            card.style.transition = "all 0.8s cubic-bezier(0.16, 1, 0.3, 1)";
+            observer.observe(card);
+        });
+    };
+
+    const updateUI = () => {
+        const progress = (petData.currentIntake / petData.dailyGoal) * 100;
+        document.querySelector('.progress').style.width = `${Math.min(progress, 100)}%`;
+    };
+
+    return {
+        init: () => {
+            initChart();
+            handleFoodLogging();
+            initScrollReveal();
+            console.log("PetHabit AI Engine Started.");
+        }
+    };
+})();
+
+// Launch App
+document.addEventListener('DOMContentLoaded', PetApp.init);
+</script>

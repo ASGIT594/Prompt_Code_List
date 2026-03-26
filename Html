@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    :root { --primary: #0f172a; --accent: #2563eb; --danger: #ef4444; --success: #10b981; --warn: #f59e0b; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; margin: 0; display: flex; height: 100vh; }
+    
+    .sidebar { width: 220px; background: var(--primary); color: white; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+    .nav-btn { background: none; border: none; color: #94a3b8; text-align: left; padding: 12px; cursor: pointer; border-radius: 8px; font-weight: 600; }
+    .nav-btn.active { background: #334155; color: white; }
+    
+    .main { flex: 1; padding: 25px; overflow-y: auto; }
+    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+    .stat-box { padding: 15px; background: white; border-radius: 10px; border: 1px solid #e2e8f0; }
+    .stat-val { font-size: 20px; font-weight: bold; margin-top: 5px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+    th { background: #f8fafc; color: #475569; }
+
+    .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index: 1000; }
+    .modal-content { background:white; padding:25px; border-radius:12px; width:450px; }
+    
+    .grid-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+    input, select, textarea { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; }
+    
+    .btn-rev { background: var(--warn); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+    .btn-edit { background: var(--primary); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+    .btn-del { background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+    .btn-approve { background: var(--success); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .badge { padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; }
+    
+    .filter-bar { background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h2 style="font-size: 18px; margin-bottom: 20px;">GL Portal</h2>
+  <button class="nav-btn active" onclick="showTab('maker')">Maker Dashboard</button>
+  <button class="nav-btn" onclick="showTab('checker')">Checker Portal</button>
+  <button class="nav-btn" onclick="showTab('recon')">Reconciliation</button>
+  <button class="nav-btn" onclick="showTab('cfo')">CFO Analysis</button>
+</div>
+
+<div class="main">
+  <div id="makerTab">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin-top:0">Accrual Entry Form</h3>
+        <button id="cancelEditBtn" onclick="cancelEdit()" style="display:none; background:var(--danger); color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">✖ Cancel Edit</button>
+      </div>
+      
+      <form id="glForm" class="grid-form">
+        <div class="field"><label>FY</label><select name="fy" id="fy_drop" onchange="updateUI()"></select></div>
+        <div class="field"><label>Entity</label><select name="entity" id="ent_drop"></select></div>
+        <div class="field"><label>Vendor</label><input type="text" name="vendor" id="vendorInput" required></div>
+        <div class="field"><label>Expense Head</label><select name="expenseHead" id="exp_drop" onchange="updateUI()"></select></div>
+        <div class="field"><label>Posting Period</label><input type="month" name="postingPeriod" id="p_per" onchange="updateUI()" required></div>
+        <div class="field"><label>Amount</label><input type="number" name="amount" id="amountInput" required></div>
+        <div class="field" style="grid-column: span 3;"><label>Comments / Notes</label><input type="text" name="comments" id="commentsInput" placeholder="Optional notes for Checker..."></div>
+        <div class="field" style="grid-column: span 3;"><label>Narration (Auto)</label><input type="text" name="narration" id="narr" readonly style="background:#f8fafc;"></div>
+        <input type="hidden" name="debitAc" id="hiddenDr">
+        <input type="hidden" name="creditAc" id="hiddenCr">
+        <button type="submit" id="submitBtn" style="grid-column: span 3; background:var(--accent); color:white; padding:12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; transition: 0.3s;">SUBMIT ENTRY</button>
+      </form>
+    </div>
+    <div class="card">
+      <h3>My Entries</h3>
+      <table id="makerTable"><thead><tr><th>Serial</th><th>Expense Head</th><th>Amount</th><th>Status</th><th>Invoice Ref</th><th>Action</th></tr></thead><tbody id="makerBody"></tbody></table>
+    </div>
+  </div>
+
+  <div id="checkerTab" style="display:none;">
+    <div class="card">
+      <h3>Pending Approvals</h3>
+      <table id="checkerTable">
+        <thead>
+          <tr>
+            <th>Serial</th>
+            <th>Entity</th>
+            <th>Vendor</th>
+            <th>Expense Head</th>
+            <th>Amount</th>
+            <th>Narration</th>
+            <th>Comments</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="checkerBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="reconTab" style="display:none;">
+    <div class="filter-bar">
+      <label>Entity Filter:</label>
+      <select id="reconEntityFilter" onchange="renderRecon()" style="width: 250px;"></select>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-box"><div>Portal Net Open</div><div id="reconNet" class="stat-val" style="color:var(--accent)">0</div></div>
+      <div class="stat-box"><div>ERP Balance Input</div><input type="number" id="erpInput" oninput="calcVar()" style="width:100%; margin-top:5px;"></div>
+      <div class="stat-box" id="varBox"><div>Variance</div><div id="reconVar" class="stat-val">0</div></div>
+    </div>
+    <div class="card">
+      <h3>Open Balances by Expense Head & Vendor</h3>
+      <div id="reconSegmentList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
+    </div>
+  </div>
+
+  <div id="cfoTab" style="display:none;">
+    <div class="filter-bar">
+      <label>Entity Filter:</label>
+      <select id="cfoEntityFilter" onchange="renderCFO()" style="width: 250px;"></select>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-box"><div>Open Accruals (Unbilled)</div><div id="cfoOpenBal" class="stat-val" style="color:var(--primary)">0</div></div>
+      <div class="stat-box"><div>Total Over-Accrued (Gain)</div><div id="cfoOver" class="stat-val" style="color:var(--success)">0</div></div>
+      <div class="stat-box"><div>Total Under-Accrued (Loss)</div><div id="cfoUnder" class="stat-val" style="color:var(--danger)">0</div></div>
+      <div class="stat-box"><div>Net P&L Impact</div><div id="cfoNet" class="stat-val">0</div></div>
+    </div>
+    <div class="card">
+      <h3>Variance Ledger (Cleared Entries)</h3>
+      <table id="cfoTable"><thead><tr><th>Serial</th><th>Entity</th><th>Expense Head</th><th>Invoice Ref</th><th>Variance Amt</th><th>Type</th></tr></thead><tbody id="cfoBody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <h3 id="editTitle">Justification Required</h3>
+    <textarea id="editReason" style="width:100%; height:60px;" placeholder="Reason for changing/deleting..."></textarea>
+    <div style="margin-top:15px; display:flex; gap:10px;">
+      <button onclick="executeEdit()" style="flex:1; background:var(--primary); color:white; border:none; padding:10px; border-radius:6px;">Confirm</button>
+      <button onclick="closeModal('editModal')" style="flex:1; background:#e2e8f0; border:none; padding:10px; border-radius:6px;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="revModal" class="modal">
+  <div class="modal-content">
+    <h3>Post Reversal</h3>
+    <p id="revOrigInfo" style="font-size:12px; color:#64748b;"></p>
+    <div class="field"><label>Actual Bill Number</label><input type="text" id="revInvNo" required></div>
+    <div class="field" style="margin-top:10px;"><label>Actual Invoice Amount</label><input type="number" id="revActualAmt" oninput="calcRevVar()" required></div>
+    <div id="revVarDisplay" style="margin-top:10px; padding:10px; border-radius:8px; font-size:12px; font-weight:bold;"></div>
+    <div style="margin-top:20px; display:flex; gap:10px;">
+      <button onclick="submitReversal()" style="flex:1; background:var(--primary); color:white; border:none; padding:10px; border-radius:6px;">Post Reversal</button>
+      <button onclick="closeModal('revModal')" style="flex:1; background:#e2e8f0; border:none; padding:10px; border-radius:6px;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let accrualAccount = "";
+  let allAccrualData = [];
+  let currentOrigAmt = 0;
+  let activeSerial = null;
+  let activeEditType = null;
+  let currentReconNet = 0;
+  let editingSerial = null; // New tracking variable
+
+  window.onload = function() {
+    google.script.run.withSuccessHandler(data => {
+      fill('fy_drop', data.fy);
+      fill('ent_drop', data.entity);
+      fill('exp_drop', data.expenseHead);
+      accrualAccount = data.accrualGL;
+      updateUI();
+      loadData();
+    }).getSettingsData();
+  };
+
+  function fill(id, list) { document.getElementById(id).innerHTML = list.map(i => `<option>${i}</option>`).join(''); }
+
+  function updateUI() {
+    const fy = document.getElementById('fy_drop').value;
+    const p = document.getElementById('p_per').value;
+    const ex = document.getElementById('exp_drop').value;
+    document.getElementById('narr').value = `Being Accruals Booked for ${fy} ${p} - ${ex}`;
+    document.getElementById('hiddenDr').value = ex;
+    document.getElementById('hiddenCr').value = accrualAccount;
+  }
+
+  function showTab(t) {
+    ['maker','checker','recon','cfo'].forEach(id => document.getElementById(id+'Tab').style.display = 'none');
+    document.getElementById(t+'Tab').style.display = 'block';
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    let selectedBtn = document.querySelector(`.nav-btn[onclick="showTab('${t}')"]`);
+    if(selectedBtn) selectedBtn.classList.add('active');
+    loadData();
+  }
+
+  function loadData() {
+    google.script.run.withSuccessHandler(data => {
+      allAccrualData = data.slice(1).reverse();
+      
+      let uniqueEntities = [...new Set(allAccrualData.map(r => r[2]))].filter(String);
+      let options = '<option value="ALL">Consolidated (All Entities)</option>';
+      uniqueEntities.forEach(e => options += `<option value="${e}">${e}</option>`);
+      
+      if(document.getElementById('reconEntityFilter').innerHTML.length < 50) {
+        document.getElementById('reconEntityFilter').innerHTML = options;
+        document.getElementById('cfoEntityFilter').innerHTML = options;
+      }
+      
+      renderMakerChecker();
+      renderRecon();
+      renderCFO();
+    }).getDatabaseRecords();
+  }
+
+  function renderMakerChecker() {
+    document.getElementById('makerBody').innerHTML = allAccrualData.map(r => {
+      let btn = '';
+      if (r[10] === 'Pending' || r[10] === 'Pending Mod') {
+        btn = `<button class="btn-edit" onclick="openEdit('${r[0]}','EDIT')">Edit</button> <button class="btn-del" onclick="openEdit('${r[0]}','DELETE')">Del</button>`;
+      } else if (r[10] === 'Approved') {
+        btn = `<button class="btn-rev" onclick="openRev('${r[0]}','${r[5]}')">Reverse</button>`;
+      }
+      return `<tr><td>${r[0]}</td><td>${r[7]}</td><td>${r[5]}</td><td>${r[10]}</td><td>${r[11] || '-'}</td><td>${btn}</td></tr>`;
+    }).join('');
+    
+    document.getElementById('checkerBody').innerHTML = allAccrualData.filter(r => r[10] === 'Pending' || r[10] === 'Pending Mod').map(r => 
+      `<tr>
+        <td>${r[0]}</td><td>${r[2]}</td><td>${r[8]}</td><td>${r[7]}</td><td>${r[5]}</td><td>${r[13]}</td><td>${r[11]}</td>
+        <td><button class="btn-approve" onclick="approve('${r[0]}')">Approve</button></td>
+      </tr>`
+    ).join('');
+  }
+
+  function renderRecon() {
+    let selectedEntity = document.getElementById('reconEntityFilter').value;
+    let netBalance = 0;
+    let segments = {};
+
+    allAccrualData.forEach(r => {
+      if (selectedEntity !== "ALL" && r[2] !== selectedEntity) return;
+      let amt = parseFloat(r[5] || 0);
+      let headAndVendor = `${r[7]} - ${r[8]}`;
+
+      if(r[10] === 'Approved' || r[10] === 'Pending' || r[10] === 'Pending Mod' || r[10] === 'Reversed' || r[10] === 'Fully Reversed') {
+         netBalance += amt;
+         segments[headAndVendor] = (segments[headAndVendor] || 0) + amt;
+      }
+    });
+
+    currentReconNet = netBalance;
+    document.getElementById('reconNet').innerText = netBalance.toLocaleString();
+    
+    let segHtml = Object.keys(segments)
+      .filter(k => Math.abs(segments[k]) > 0.01)
+      .map(k => `<div style="padding:10px; border:1px solid #e2e8f0; border-radius:6px; background:white;">${k}<br><b style="font-size:16px;">${segments[k].toLocaleString()}</b></div>`)
+      .join('');
+      
+    document.getElementById('reconSegmentList').innerHTML = segHtml || "No open accruals for this entity.";
+    calcVar();
+  }
+
+  function renderCFO() {
+    let selectedEntity = document.getElementById('cfoEntityFilter').value;
+    let overAccrued = 0, underAccrued = 0, openBalance = 0; 
+    let cfoHtml = "";
+
+    allAccrualData.forEach(r => {
+      if (selectedEntity !== "ALL" && r[2] !== selectedEntity) return;
+      let amt = parseFloat(r[5] || 0);
+
+      if(r[10] === 'Approved' || r[10] === 'Pending' || r[10] === 'Pending Mod' || r[10] === 'Reversed' || r[10] === 'Fully Reversed') {
+         openBalance += amt;
+      }
+
+      if(r[10] === 'Reversed') {
+        let commentString = String(r[11]);
+        let varMatch = commentString ? commentString.match(/Variance: ([-\d.]+)/) : null;
+        let invMatch = commentString ? commentString.match(/Invoice: (.*)/) : null;
+        let vAmt = varMatch ? parseFloat(varMatch[1]) : 0;
+        let invNo = invMatch ? invMatch[1] : "N/A";
+        
+        if(vAmt !== 0) {
+          if(vAmt > 0) { underAccrued += vAmt; } else { overAccrued += Math.abs(vAmt); }
+          let badge = vAmt > 0 ? `<span class="badge" style="background:#fee2e2; color:#b91c1c">Under-Accrued (Loss)</span>` : `<span class="badge" style="background:#dcfce7; color:#15803d">Over-Accrued (Gain)</span>`;
+          cfoHtml += `<tr><td>${r[0]}</td><td>${r[2]}</td><td>${r[7]}</td><td>${invNo}</td><td>${Math.abs(vAmt).toLocaleString()}</td><td>${badge}</td></tr>`;
+        }
+      }
+    });
+
+    document.getElementById('cfoOpenBal').innerText = openBalance.toLocaleString();
+    document.getElementById('cfoOver').innerText = overAccrued.toLocaleString();
+    document.getElementById('cfoUnder').innerText = underAccrued.toLocaleString();
+    document.getElementById('cfoNet').innerText = (underAccrued - overAccrued).toLocaleString();
+    document.getElementById('cfoBody').innerHTML = cfoHtml || "<tr><td colspan='6'>No variances recorded.</td></tr>";
+  }
+
+  // --- FIXED EDIT/DELETE WORKFLOW ---
+  function openEdit(s, type) {
+    if (type === 'EDIT') {
+      let row = allAccrualData.find(r => r[0] == s);
+      if(!row) return;
+
+      // Populate top form
+      document.getElementById('fy_drop').value = row[1];
+      document.getElementById('ent_drop').value = row[2];
+      document.getElementById('p_per').value = row[3];
+      document.getElementById('amountInput').value = row[5];
+      document.getElementById('exp_drop').value = row[7];
+      document.getElementById('vendorInput').value = row[8];
+      updateUI(); 
+
+      editingSerial = s;
+      document.getElementById('submitBtn').innerText = "UPDATE ENTRY #" + s;
+      document.getElementById('submitBtn').style.background = "var(--warn)"; // Turn button orange
+      document.getElementById('cancelEditBtn').style.display = 'inline-block';
+      
+      window.scrollTo(0, 0); // Scroll to top form
+    } else {
+      // DELETE workflow
+      activeSerial = s; activeEditType = type;
+      document.getElementById('editTitle').innerText = 'Reason for Deletion';
+      document.getElementById('editReason').value = '';
+      document.getElementById('editModal').style.display = 'flex';
+    }
+  }
+  
+  function executeEdit() {
+    const r = document.getElementById('editReason').value;
+    if(!r) return alert("You must provide a reason.");
+    
+    let payload = { reason: r };
+    
+    // If it's an EDIT, grab all the new data from the form
+    if (activeEditType === 'EDIT') {
+      payload.fy = document.getElementById('fy_drop').value;
+      payload.entity = document.getElementById('ent_drop').value;
+      payload.postingPeriod = document.getElementById('p_per').value;
+      payload.amount = document.getElementById('amountInput').value;
+      payload.expenseHead = document.getElementById('exp_drop').value;
+      payload.vendor = document.getElementById('vendorInput').value;
+      payload.narration = document.getElementById('narr').value;
+      payload.debitAc = document.getElementById('hiddenDr').value;
+      payload.creditAc = document.getElementById('hiddenCr').value;
+    }
+
+    google.script.run.withSuccessHandler(() => { 
+      closeModal('editModal'); 
+      if (activeEditType === 'EDIT') cancelEdit(); // Reset form state
+      loadData(); 
+    }).updateEntry(activeSerial, payload, activeEditType);
+  }
+
+  function cancelEdit() {
+    editingSerial = null;
+    document.getElementById('glForm').reset();
+    updateUI();
+    document.getElementById('submitBtn').innerText = "SUBMIT ENTRY";
+    document.getElementById('submitBtn').style.background = "var(--accent)";
+    document.getElementById('cancelEditBtn').style.display = 'none';
+  }
+
+  // Intercept form submission
+  document.getElementById('glForm').onsubmit = function(e) {
+    e.preventDefault();
+    if (editingSerial) {
+      // If we are currently editing, open the Justification modal
+      activeSerial = editingSerial;
+      activeEditType = 'EDIT';
+      document.getElementById('editTitle').innerText = 'Reason for Edit';
+      document.getElementById('editReason').value = '';
+      document.getElementById('editModal').style.display = 'flex';
+    } else {
+      // Standard new entry submission
+      google.script.run.withSuccessHandler(() => { 
+        alert("Posted successfully!"); 
+        loadData(); 
+        this.reset(); 
+        updateUI(); 
+      }).submitToSheet(this);
+    }
+  };
+
+  // Reversal Functions
+  function openRev(s, a) {
+    activeSerial = s; currentOrigAmt = parseFloat(a);
+    document.getElementById('revOrigInfo').innerText = "Original Booked Amount: " + currentOrigAmt.toLocaleString();
+    document.getElementById('revModal').style.display = 'flex';
+  }
+
+  function calcRevVar() {
+    const act = parseFloat(document.getElementById('revActualAmt').value) || 0;
+    const diff = act - currentOrigAmt;
+    const d = document.getElementById('revVarDisplay');
+    d.style.background = diff > 0 ? "#fee2e2" : (diff < 0 ? "#dcfce7" : "#f1f5f9");
+    d.innerText = diff === 0 ? "Exact Match" : (diff > 0 ? "Under-accrued (Loss): " : "Over-accrued (Gain): ") + Math.abs(diff).toLocaleString();
+  }
+
+  function submitReversal() {
+    const inv = document.getElementById('revInvNo').value;
+    const amt = document.getElementById('revActualAmt').value;
+    google.script.run.withSuccessHandler(() => { closeModal('revModal'); loadData(); }).processReversal(activeSerial, amt, inv, "System Reversal");
+  }
+
+  function approve(s) { google.script.run.withSuccessHandler(() => loadData()).approveEntry(s); }
+  function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+  function calcVar() {
+    const erp = parseFloat(document.getElementById('erpInput').value) || 0;
+    const v = currentReconNet - erp;
+    document.getElementById('reconVar').innerText = v.toLocaleString();
+    document.getElementById('varBox').style.background = v === 0 ? "#dcfce7" : "#fee2e2";
+  }
+</script>
+</body>
+</html>

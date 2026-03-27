@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root { --accent: #2DD4BF; --bg: #020617; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg); color: white; overflow-x: hidden; }
+
+    .hero-video {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      object-fit: cover; z-index: -1; opacity: 0.5; filter: saturate(1.2) brightness(0.6);
+    }
+
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+    }
+
+    .pulse-glow {
+      box-shadow: 0 0 20px rgba(45, 212, 191, 0.4);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <video class="hero-video" autoplay muted loop playsinline>
+    <source src="https://assets.mixkit.co/videos/preview/mixkit-owner-petting-his-dog-carefully-32863-large.mp4" type="video/mp4">
+  </video>
+
+  <nav class="flex justify-between items-center p-8 fixed w-full z-50">
+    <div class="text-2xl font-bold tracking-tighter">PET<span class="text-teal-400">PULSE</span>.AI</div>
+    <div class="glass-panel px-6 py-2 rounded-full space-x-6 text-sm font-medium">
+      <a href="#" class="hover:text-teal-400 transition">Network</a>
+      <a href="#" class="hover:text-teal-400 transition">AI Diagnostics</a>
+      <a href="#" class="hover:text-teal-400 transition">Emergency</a>
+    </div>
+  </nav>
+
+  <main class="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
+    <div class="max-w-4xl text-center space-y-6" id="hero-content">
+      <h1 class="text-7xl font-extrabold tracking-tight leading-none">
+        The Future of <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-300 to-blue-500">Pet Longevity.</span>
+      </h1>
+      <p class="text-gray-400 text-xl max-w-2xl mx-auto">
+        Venture-backed AI ecosystem for pet health, nutrients, and emergency response. Connected to your private medical ledger.
+      </p>
+      
+      <div class="flex space-x-4 justify-center pt-8">
+        <button onclick="showDashboard()" class="pulse-glow bg-teal-500 text-black px-10 py-4 rounded-xl font-bold hover:bg-white transition-all">
+          Launch Dashboard
+        </button>
+        <button class="glass-panel px-10 py-4 rounded-xl font-bold hover:border-teal-400 transition-all">
+          Connect Pet ID
+        </button>
+      </div>
+    </div>
+
+    <div id="dashboard" class="hidden w-full max-w-6xl mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+      <div class="glass-panel p-8 rounded-3xl group hover:border-teal-500/50 transition">
+        <div class="text-teal-400 mb-4">● Live Activity</div>
+        <h3 class="text-2xl font-bold mb-2">Nutrient Sync</h3>
+        <p class="text-gray-400 text-sm">AI analyzing current calorie burn vs intake from Google Sheets data.</p>
+        <div class="mt-6 h-1 bg-gray-800 rounded-full overflow-hidden">
+          <div class="w-3/4 h-full bg-teal-500"></div>
+        </div>
+      </div>
+
+      <div class="glass-panel p-8 rounded-3xl">
+        <div class="text-blue-400 mb-4">● Medical Vault</div>
+        <h3 class="text-2xl font-bold mb-2">Health Ledger</h3>
+        <p class="text-gray-400 text-sm">Unique ID: <span id="pet-id-display" class="text-white font-mono">PENDING...</span></p>
+        <button class="mt-6 text-xs uppercase tracking-widest text-teal-400 font-bold">View Records →</button>
+      </div>
+
+      <div class="glass-panel p-8 rounded-3xl bg-gradient-to-br from-red-500/10 to-transparent">
+        <div class="text-red-500 mb-4">● SOS Response</div>
+        <h3 class="text-2xl font-bold mb-2">Emergency Locate</h3>
+        <p class="text-gray-400 text-sm">Scanning for nearest 24/7 pet hospitals in Bangalore...</p>
+        <div class="mt-4 p-2 bg-red-500/20 rounded-lg text-red-500 text-xs text-center border border-red-500/50">
+          RADAR ACTIVE
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Senior Dev GSAP Animations
+    gsap.from("#hero-content h1", { opacity: 0, y: 50, duration: 1.2, ease: "power4.out" });
+    gsap.from("#hero-content p", { opacity: 0, y: 20, duration: 1, delay: 0.4 });
+
+    function showDashboard() {
+      gsap.to("#hero-content", { opacity: 0, y: -50, duration: 0.8, onComplete: () => {
+        document.getElementById('hero-content').style.display = 'none';
+        const dash = document.getElementById('dashboard');
+        dash.classList.remove('hidden');
+        gsap.from(dash.children, { opacity: 0, y: 30, stagger: 0.2, duration: 0.8, ease: "back.out(1.7)" });
+      }});
+    }
+  </script>
+</body>
+</html>
